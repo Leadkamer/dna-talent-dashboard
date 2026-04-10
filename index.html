@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNA Talent - Leadgen Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#f8fafc;color:#0f172a;min-height:100vh}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#f1f5f9;border-radius:3px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.loader{display:flex;justify-content:center;align-items:center;height:100vh}
+.spinner{width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#215362;border-radius:50%;animation:spin .8s linear infinite}
+.header{display:flex;justify-content:space-between;align-items:center;padding:20px 28px;background:white;border-bottom:1px solid #e2e8f0}
+.header-left{display:flex;align-items:center;gap:14px}
+.title{font-size:20px;font-weight:700;color:#0f172a;letter-spacing:-.02em;line-height:1.2}
+.subtitle{font-size:13px;color:#64748b;font-weight:400}
+.live-indicator{display:flex;align-items:center;gap:8px;padding:6px 14px;background:#f0fdf4;border-radius:20px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2);display:inline-block}
+.live-text{font-size:13px;font-weight:500;color:#166534;font-family:'DM Mono',monospace}
+.refresh-btn{padding:6px 14px;font-size:13px;font-weight:500;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#475569;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.refresh-btn:hover{background:#f1f5f9}
+.funnel{display:flex;gap:12px;padding:20px 28px;background:white;border-bottom:1px solid #e2e8f0}
+.funnel-step{flex:1;animation:fadeIn .4s ease both}
+.funnel-label{font-size:11px;font-weight:500;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.funnel-bar-bg{height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden}
+.funnel-bar{height:100%;background:linear-gradient(90deg,#215362,#79665A);border-radius:3px;transition:width .6s ease}
+.funnel-count{font-size:22px;font-weight:700;color:#0f172a;margin-top:4px;font-family:'DM Mono',monospace}
+.filter-bar{display:flex;gap:12px;padding:16px 28px;background:white;border-bottom:1px solid #e2e8f0;flex-wrap:wrap;align-items:center}
+.filter-group{display:flex;gap:4px;flex-wrap:wrap}
+.filter-btn{padding:6px 14px;font-size:13px;font-weight:500;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#475569;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;font-family:'DM Sans',sans-serif}
+.filter-btn:hover{background:#f1f5f9}
+.filter-btn.active{background:#215362;color:white;border-color:#215362}
+.search-wrap{position:relative;margin-left:auto}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%)}
+.search-input{padding:7px 12px 7px 32px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;width:260px;outline:none;font-family:'DM Sans',sans-serif;color:#0f172a;background:#f8fafc}
+.search-input:focus{border-color:#215362;box-shadow:0 0 0 2px rgba(33,83,98,.1)}
+.table-wrap{margin:16px 28px 0;background:white;border-radius:10px;border:1px solid #e2e8f0;overflow:auto;box-shadow:0 1px 3px rgba(0,0,0,.04);max-height:calc(100vh - 340px)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #e2e8f0;background:#fafbfc;position:sticky;top:0;white-space:nowrap;cursor:pointer;user-select:none;z-index:2}
+th:hover{color:#215362}
+.sort-arrow{color:#215362;font-size:10px}
+tr.lead-row{cursor:pointer;transition:background .1s;border-bottom:1px solid #f1f5f9;animation:fadeIn .3s ease both}
+tr.lead-row:hover{background:#f8fafc}
+td{padding:10px 14px;vertical-align:middle}
+.date-mono{font-family:'DM Mono',monospace;font-size:12px;color:#64748b}
+.name-text{font-weight:500}
+.company-text{font-weight:500;color:#334155}
+.dim-text{color:#64748b;font-size:12px}
+.score-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;font-weight:700;font-size:13px;font-family:'DM Mono',monospace}
+.score-high{background:#ecfdf5;color:#065f46}
+.score-mid{background:#fffbeb;color:#92400e}
+.score-low{background:#fef2f2;color:#991b1b}
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:5px;font-size:12px;font-weight:500;white-space:nowrap}
+.empty-state{padding:40px;text-align:center;color:#94a3b8;font-size:14px}
+.table-footer{padding:10px 28px;font-size:12px;color:#94a3b8;text-align:right}
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.4);backdrop-filter:blur(4px);z-index:1000;display:none;justify-content:flex-end}
+.overlay.open{display:flex}
+.panel{width:480px;max-width:90vw;background:white;height:100%;overflow-y:auto;padding:28px;animation:slideIn .25s ease;box-shadow:-8px 0 30px rgba(0,0,0,.1)}
+.panel-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.panel-name{font-size:20px;font-weight:700;color:#0f172a}
+.panel-company{font-size:14px;color:#64748b;margin-top:2px}
+.close-btn{width:32px;height:32px;border-radius:6px;border:1px solid #e2e8f0;background:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;font-family:'DM Sans',sans-serif}
+.close-btn:hover{background:#f1f5f9}
+.panel-meta{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px 0;border-top:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;margin-bottom:20px}
+.meta-item{display:flex;flex-direction:column;gap:4px}
+.meta-label{font-size:11px;font-weight:500;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em}
+.panel-score{font-size:18px;font-weight:700;color:#215362;font-family:'DM Mono',monospace}
+.panel-section{margin-bottom:18px}
+.panel-section-title{font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.message-box{padding:14px;background:#f8fafc;border-radius:8px;font-size:13px;line-height:1.6;color:#334155;border:1px solid #e2e8f0;white-space:pre-wrap}
+.linkedin-link{font-size:13px;color:#215362;word-break:break-all;text-decoration:none}
+.linkedin-link:hover{text-decoration:underline}
+@media(max-width:768px){.funnel{flex-wrap:wrap}.funnel-step{min-width:calc(50% - 6px)}.filter-bar{flex-direction:column;align-items:stretch}.search-wrap{margin-left:0}.search-input{width:100%}.table-wrap{margin:16px 12px 0}.header,.funnel,.filter-bar{padding-left:12px;padding-right:12px}.table-footer{padding:10px 12px}}
+</style>
+</head>
+<body>
+<div id="app"><div class="loader"><div class="spinner"></div></div></div>
+<script>
+var SHEET_ID = '1D2OOrxtTIt0tRAIJRR5Tkjh_FBnbSN8lu7BM-xyfz5U';
+var allData = [];
+var statusFilter = 'Alle';
+var searchQuery = '';
+var sortField = 'Datum';
+var sortDir = 'desc';
+var selectedLead = null;
+
+var statusConfigs = {
+  'Nieuw': {color:'#64748b',bg:'#f1f5f9',label:'Nieuw',icon:'○'},
+  'Verzenden': {color:'#f59e0b',bg:'#fffbeb',label:'Verzenden',icon:'◐'},
+  'Verzonden': {color:'#3b82f6',bg:'#eff6ff',label:'Verzonden',icon:'●'},
+  'Geaccepteerd': {color:'#10b981',bg:'#ecfdf5',label:'Geaccepteerd',icon:'✓'},
+  'Afgewezen': {color:'#ef4444',bg:'#fef2f2',label:'Afgewezen',icon:'✗'},
+  'Error': {color:'#ef4444',bg:'#fef2f2',label:'Error',icon:'!'},
+  'AI Error': {color:'#ef4444',bg:'#fef2f2',label:'AI Error',icon:'!'}
+};
+
+function getStatus(lead) {
+  if (lead['Heeft Gereageerd'] === 'Ja') return {color:'#8b5cf6',bg:'#f5f3ff',label:'Gereageerd',icon:'★'};
+  if (lead['Status Follow-up'] === 'Nudge Verzonden') return {color:'#ec4899',bg:'#fdf2f8',label:'Nudge',icon:'↻'};
+  if (lead['Status Follow-up'] === 'Verzonden') return {color:'#6366f1',bg:'#eef2ff',label:'Follow-up',icon:'→'};
+  return statusConfigs[lead.Status] || statusConfigs['Nieuw'];
+}
+
+function handleSheetData(data) {
+  var cols = data.table.cols.map(function(c) { return c.label || ''; });
+  var rows = data.table.rows;
+  allData = rows.map(function(row) {
+    var obj = {};
+    row.c.forEach(function(cell, i) {
+      if (cols[i]) obj[cols[i]] = cell ? (cell.v !== null && cell.v !== undefined ? String(cell.v) : '') : '';
+    });
+    return obj;
+  }).filter(function(r) { return r['Linkedin URL'] || r['Voornaam']; });
+  console.log('Data geladen: ' + allData.length + ' leads');
+  render();
+}
+
+function loadData() {
+  var old = document.getElementById('sheetLoader');
+  if (old) old.remove();
+  var s = document.createElement('script');
+  s.id = 'sheetLoader';
+  s.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=responseHandler:handleSheetData&sheet=Leads&_t=' + Date.now();
+  s.onerror = function() {
+    document.getElementById('app').innerHTML = '<div class="empty-state" style="padding:80px 20px"><h3 style="font-size:18px;margin-bottom:8px">Kan data niet laden</h3><p>Controleer of de Google Sheet gedeeld is met "Iedereen met de link"</p></div>';
+  };
+  document.body.appendChild(s);
+}
+
+function getFiltered() {
+  var items = allData.slice();
+  if (statusFilter !== 'Alle') items = items.filter(function(l) { return getStatus(l).label === statusFilter; });
+  if (searchQuery) {
+    var q = searchQuery.toLowerCase();
+    items = items.filter(function(l) {
+      return (l.Voornaam||'').toLowerCase().indexOf(q) >= 0 || (l.Achternaam||'').toLowerCase().indexOf(q) >= 0 || (l.Bedrijf||'').toLowerCase().indexOf(q) >= 0 || (l.Sector||'').toLowerCase().indexOf(q) >= 0 || (l.Functie||'').toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  items.sort(function(a, b) {
+    var aV = a[sortField] || '', bV = b[sortField] || '';
+    if (sortField === 'AI Score') { aV = parseInt(aV)||0; bV = parseInt(bV)||0; }
+    var cmp = aV < bV ? -1 : aV > bV ? 1 : 0;
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+  return items;
+}
+
+function getFunnelData() {
+  var base = allData;
+  return [
+    {label:'Leads', count: base.length},
+    {label:'Verzonden', count: base.filter(function(l) { return ['Verzonden','Geaccepteerd'].indexOf(l.Status)>=0 || l['Status Follow-up']; }).length},
+    {label:'Geaccepteerd', count: base.filter(function(l) { return l.Status==='Geaccepteerd'; }).length},
+    {label:'Follow-up', count: base.filter(function(l) { return l['Status Follow-up']==='Verzonden' || l['Status Follow-up']==='Nudge Verzonden'; }).length},
+    {label:'Gereageerd', count: base.filter(function(l) { return l['Heeft Gereageerd']==='Ja'; }).length}
+  ];
+}
+
+function esc(str) { var d=document.createElement('div'); d.textContent=str||''; return d.innerHTML; }
+
+function render() {
+  var filtered = getFiltered();
+  var funnelData = getFunnelData();
+  var maxCount = funnelData[0].count || 1;
+  var app = document.getElementById('app');
+
+  var funnelHtml = '';
+  for (var fi=0; fi<funnelData.length; fi++) {
+    var f = funnelData[fi];
+    var pct = Math.max(8, (f.count/maxCount)*100);
+    funnelHtml += '<div class="funnel-step" style="animation-delay:'+fi*80+'ms"><div class="funnel-label">'+f.label+'</div><div class="funnel-bar-bg"><div class="funnel-bar" style="width:'+pct+'%"></div></div><div class="funnel-count">'+f.count+'</div></div>';
+  }
+
+  var statusBtns = ['Alle','Nieuw','Verzenden','Verzonden','Geaccepteerd','Follow-up','Nudge','Gereageerd','Afgewezen'];
+  var statusBtnsHtml = '';
+  for (var si=0; si<statusBtns.length; si++) {
+    var sv = statusBtns[si];
+    statusBtnsHtml += '<button class="filter-btn '+(statusFilter===sv?'active':'')+'" onclick="setStatus(\''+sv+'\')">'+sv+'</button>';
+  }
+
+  var cols = [
+    {key:'Datum',label:'Datum'},{key:'Voornaam',label:'Naam'},{key:'Bedrijf',label:'Bedrijf'},
+    {key:'Functie',label:'Functie'},{key:'Sector',label:'Sector'},{key:'AI Score',label:'Score'},
+    {key:'Gekozen Haak',label:'Haak'},{key:'Status',label:'Status'}
+  ];
+  var thHtml = '';
+  for (var ci=0; ci<cols.length; ci++) {
+    var col = cols[ci];
+    var arrow = sortField===col.key ? '<span class="sort-arrow">'+(sortDir==='asc'?' ↑':' ↓')+'</span>' : '';
+    thHtml += '<th onclick="toggleSort(\''+col.key+'\')">'+col.label+arrow+'</th>';
+  }
+
+  var rowsHtml = '';
+  if (filtered.length === 0) {
+    rowsHtml = '<tr><td colspan="8" class="empty-state">Geen leads gevonden.</td></tr>';
+  } else {
+    for (var ri=0; ri<filtered.length; ri++) {
+      var lead = filtered[ri];
+      var st = getStatus(lead);
+      var score = Number(lead['AI Score'])||0;
+      var scoreClass = score>=8?'score-high':score>=5?'score-mid':'score-low';
+      rowsHtml += '<tr class="lead-row" style="animation-delay:'+ri*20+'ms" onclick="openLead('+ri+')">';
+      rowsHtml += '<td><span class="date-mono">'+esc(lead.Datum)+'</span></td>';
+      rowsHtml += '<td><span class="name-text">'+esc(lead.Voornaam)+' '+esc(lead.Achternaam)+'</span></td>';
+      rowsHtml += '<td><span class="company-text">'+esc(lead.Bedrijf)+'</span></td>';
+      rowsHtml += '<td><span class="dim-text">'+esc(lead.Functie || lead.Headline)+'</span></td>';
+      rowsHtml += '<td><span class="dim-text">'+esc(lead.Sector)+'</span></td>';
+      rowsHtml += '<td><span class="score-badge '+scoreClass+'">'+esc(lead['AI Score'])+'</span></td>';
+      rowsHtml += '<td><span class="dim-text">'+esc(lead['Gekozen Haak'])+'</span></td>';
+      rowsHtml += '<td><span class="status-badge" style="background:'+st.bg+';color:'+st.color+'">'+st.icon+' '+st.label+'</span></td>';
+      rowsHtml += '</tr>';
+    }
+  }
+
+  var panelHtml = '';
+  if (selectedLead) {
+    var ps = getStatus(selectedLead);
+    panelHtml = '<div class="panel" onclick="event.stopPropagation()">';
+    panelHtml += '<div class="panel-header"><div><h2 class="panel-name">'+esc(selectedLead.Voornaam)+' '+esc(selectedLead.Achternaam)+'</h2><p class="panel-company">'+esc(selectedLead.Functie)+' bij '+esc(selectedLead.Bedrijf)+'</p></div><button class="close-btn" onclick="closeLead()">&#10005;</button></div>';
+    panelHtml += '<div class="panel-meta">';
+    panelHtml += '<div class="meta-item"><span class="meta-label">Status</span><span class="status-badge" style="background:'+ps.bg+';color:'+ps.color+'">'+ps.icon+' '+ps.label+'</span></div>';
+    panelHtml += '<div class="meta-item"><span class="meta-label">AI Score</span><span class="panel-score">'+esc(selectedLead['AI Score'])+'/10</span></div>';
+    panelHtml += '<div class="meta-item"><span class="meta-label">Haak</span><span>'+esc(selectedLead['Gekozen Haak'])+'</span></div>';
+    panelHtml += '<div class="meta-item"><span class="meta-label">Strategie</span><span>'+esc(selectedLead['Gekozen Strategie'])+'</span></div>';
+    panelHtml += '<div class="meta-item"><span class="meta-label">Sector</span><span>'+esc(selectedLead.Sector)+'</span></div>';
+    panelHtml += '<div class="meta-item"><span class="meta-label">Locatie</span><span>'+esc(selectedLead.Locatie)+'</span></div>';
+    panelHtml += '</div>';
+    if (selectedLead['Linkedin URL']) panelHtml += '<div class="panel-section"><h3 class="panel-section-title">LinkedIn</h3><a href="'+esc(selectedLead['Linkedin URL'])+'" target="_blank" rel="noopener" class="linkedin-link">'+esc(selectedLead['Linkedin URL'])+'</a></div>';
+    panelHtml += '<div class="panel-section"><h3 class="panel-section-title">Connectieverzoek</h3><div class="message-box">'+(esc(selectedLead['Connectie Notitie'])||'—')+'</div></div>';
+    panelHtml += '<div class="panel-section"><h3 class="panel-section-title">Follow-up bericht</h3><div class="message-box">'+(esc(selectedLead['Follow-up Bericht'])||'—')+'</div></div>';
+    panelHtml += '<div class="panel-section"><h3 class="panel-section-title">Nudge bericht</h3><div class="message-box">'+(esc(selectedLead['Follow-up Bericht 2'])||'—')+'</div></div>';
+    panelHtml += '<div class="panel-section"><h3 class="panel-section-title">Email</h3><div class="message-box"><strong>'+(esc(selectedLead['Email Onderwerp'])||'—')+'</strong><br><br>'+(esc(selectedLead['Email Body'])||'—')+'</div></div>';
+    panelHtml += '<div class="panel-section"><h3 class="panel-section-title">Redenering</h3><div class="message-box">'+(esc(selectedLead.Redenering)||'—')+'</div></div>';
+    panelHtml += '</div>';
+  }
+
+  app.innerHTML = '<div class="header"><div class="header-left"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#215362"/><circle cx="14" cy="10" r="4" stroke="white" stroke-width="1.5" fill="none"/><path d="M8 22c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><div><h1 class="title">DNA Talent</h1><p class="subtitle">Leadgen Dashboard — Dany</p></div></div><div style="display:flex;align-items:center;gap:12px"><button class="refresh-btn" onclick="loadData()">↻ Ververs</button><div class="live-indicator"><span class="live-dot"></span><span class="live-text">'+allData.length+' leads</span></div></div></div>'
+    + '<div class="funnel">'+funnelHtml+'</div>'
+    + '<div class="filter-bar"><div class="filter-group">'+statusBtnsHtml+'</div><div class="search-wrap"><svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" placeholder="Zoek op naam, bedrijf of sector..." value="'+esc(searchQuery)+'" oninput="setSearch(this.value)" /></div></div>'
+    + '<div class="table-wrap"><table><thead><tr>'+thHtml+'</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>'
+    + '<div class="table-footer">'+filtered.length+' van '+allData.length+' leads</div>'
+    + '<div class="overlay '+(selectedLead?'open':'')+'" onclick="closeLead()">'+panelHtml+'</div>';
+}
+
+function setStatus(v) { statusFilter=v; render(); }
+function setSearch(v) { searchQuery=v; render(); }
+function toggleSort(field) {
+  if (sortField===field) sortDir=sortDir==='asc'?'desc':'asc';
+  else { sortField=field; sortDir='desc'; }
+  render();
+}
+function openLead(index) { selectedLead=getFiltered()[index]; render(); }
+function closeLead() { selectedLead=null; render(); }
+
+loadData();
+setInterval(loadData, 5*60*1000);
+</script>
+
+<style>
+elevenlabs-convai{--el-branding-display:none}
+elevenlabs-convai::part(branding){display:none!important}
+elevenlabs-convai::part(powered-by){display:none!important}
+</style>
+<elevenlabs-convai agent-id="agent_6401kncm3rh8ee8sq65wwbf4mfsk"></elevenlabs-convai>
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+</body>
+</html>
