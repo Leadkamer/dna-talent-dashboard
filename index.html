@@ -37,7 +37,15 @@ body{font-family:'DM Sans',sans-serif;background:#f8fafc;color:#0f172a;min-heigh
 .filter-btn{padding:6px 14px;font-size:13px;font-weight:500;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#475569;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;font-family:'DM Sans',sans-serif}
 .filter-btn:hover{background:#f1f5f9}
 .filter-btn.active{background:#215362;color:white;border-color:#215362}
-.search-wrap{position:relative;margin-left:auto}
+.search-wrap{position:relative}
+.status-select-wrap{display:flex;align-items:center;gap:8px;margin-left:auto}
+.status-select-wrap label{font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.status-select{padding:7px 32px 7px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;color:#0f172a;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;appearance:none;-webkit-appearance:none;outline:none;min-width:150px}
+.status-select:focus{border-color:#215362;box-shadow:0 0 0 2px rgba(33,83,98,.1)}
+.sync-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;font-family:'DM Mono',monospace}
+.sync-ok{background:#f0fdf4;color:#166534}
+.sync-off{background:#fef3c7;color:#92400e}
+.sync-err{background:#fef2f2;color:#991b1b}
 .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%)}
 .search-input{padding:7px 12px 7px 32px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;width:260px;outline:none;font-family:'DM Sans',sans-serif;color:#0f172a;background:#f8fafc}
 .search-input:focus{border-color:#215362;box-shadow:0 0 0 2px rgba(33,83,98,.1)}
@@ -78,20 +86,21 @@ td{padding:10px 14px;vertical-align:middle}
 .linkedin-link{font-size:13px;color:#215362;word-break:break-all;text-decoration:none}
 .linkedin-link:hover{text-decoration:underline}
 .filter-label{font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-right:4px;align-self:center;white-space:nowrap}
-.filter-divider{width:1px;height:20px;background:#e2e8f0;margin:0 4px;align-self:center}
 .action-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:5px;font-size:12px;font-weight:500;white-space:nowrap}
 .action-picker{display:flex;flex-wrap:wrap;gap:6px}
 .action-btn{padding:8px 12px;font-size:12px;font-weight:500;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#475569;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;transition:all .15s}
 .action-btn:hover{background:#f8fafc;border-color:#cbd5e1}
 .action-btn.active{background:#0f172a;color:white;border-color:#0f172a}
 .action-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-@media(max-width:768px){.funnel{flex-wrap:wrap}.funnel-step{min-width:calc(50% - 6px)}.filter-bar{flex-direction:column;align-items:stretch}.filter-divider{display:none}.search-wrap{margin-left:0}.search-input{width:100%}.table-wrap{margin:16px 12px 0;max-height:calc(100vh - 420px)}.header,.funnel,.filter-bar{padding-left:12px;padding-right:12px}.table-footer{padding:10px 12px}}
+@media(max-width:768px){.funnel{flex-wrap:wrap}.funnel-step{min-width:calc(50% - 6px)}.filter-bar{flex-direction:column;align-items:stretch}.status-select-wrap{margin-left:0}.status-select{flex:1}.search-input{width:100%}.table-wrap{margin:16px 12px 0;max-height:calc(100vh - 460px)}.header,.funnel,.filter-bar{padding-left:12px;padding-right:12px}.table-footer{padding:10px 12px}}
 </style>
 </head>
 <body>
 <div id="app"><div class="loader"><div class="spinner"></div></div></div>
 <script>
 var SHEET_ID = '1D2OOrxtTIt0tRAIJRR5Tkjh_FBnbSN8lu7BM-xyfz5U';
+// PLAATS HIER JE APPS SCRIPT WEB APP URL (eindigt op /exec). Leeg = alleen localStorage.
+var SYNC_URL = '';
 var allData = [];
 var statusFilter = 'Alle';
 var actionFilter = 'Alle';
@@ -99,6 +108,7 @@ var searchQuery = '';
 var sortField = 'Datum';
 var sortDir = 'desc';
 var selectedLead = null;
+var syncState = 'off'; // 'off' | 'ok' | 'err' | 'sync'
 
 var actionConfigs = {
   '': {color:'#94a3b8',bg:'#f1f5f9',label:'Geen actie',icon:'–'},
@@ -116,13 +126,42 @@ try { actionStore = JSON.parse(localStorage.getItem('dna_actions') || '{}'); } c
 function leadKey(lead) { return lead['Linkedin URL'] || ((lead.Voornaam||'')+'|'+(lead.Achternaam||'')+'|'+(lead.Bedrijf||'')); }
 function getAction(lead) { return actionStore[leadKey(lead)] || ''; }
 function saveActions() { try { localStorage.setItem('dna_actions', JSON.stringify(actionStore)); } catch(e){} }
+
+function syncDown() {
+  if (!SYNC_URL) { syncState='off'; return; }
+  syncState='sync'; render();
+  fetch(SYNC_URL + '?action=list&_t=' + Date.now())
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.ok && data.actions) {
+        actionStore = data.actions;
+        saveActions();
+        syncState='ok';
+        render();
+      } else {
+        syncState='err'; render();
+      }
+    })
+    .catch(function() { syncState='err'; render(); });
+}
+
+function syncUp(key, val) {
+  if (!SYNC_URL) return;
+  var url = SYNC_URL + '?action=set&key=' + encodeURIComponent(key) + '&value=' + encodeURIComponent(val||'') + '&_t=' + Date.now();
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.ok) { syncState='ok'; render(); }
+      else { syncState='err'; render(); }
+    })
+    .catch(function() { syncState='err'; render(); });
+}
+
 function setLeadAction(key, val) {
   if (val) actionStore[key] = val; else delete actionStore[key];
   saveActions();
-  if (selectedLead && leadKey(selectedLead) === key) {
-    // keep panel open
-  }
   render();
+  syncUp(key, val);
 }
 
 var statusConfigs = {
@@ -220,10 +259,11 @@ function render() {
   }
 
   var statusBtns = ['Alle','Nieuw','Verzenden','Verzonden','Geaccepteerd','Follow-up','Nudge','Gereageerd','Afgewezen'];
-  var statusBtnsHtml = '<span class="filter-label">Status</span>';
+  var statusSelectHtml = '';
   for (var si=0; si<statusBtns.length; si++) {
     var sv = statusBtns[si];
-    statusBtnsHtml += '<button class="filter-btn '+(statusFilter===sv?'active':'')+'" onclick="setStatus(\''+sv+'\')">'+sv+'</button>';
+    var sel = statusFilter===sv ? ' selected' : '';
+    statusSelectHtml += '<option value="'+esc(sv)+'"'+sel+'>'+esc(sv)+'</option>';
   }
 
   var actionBtns = ['Alle','Geen actie'];
@@ -305,9 +345,16 @@ function render() {
     panelHtml += '</div>';
   }
 
-  app.innerHTML = '<div class="header"><div class="header-left"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#215362"/><circle cx="14" cy="10" r="4" stroke="white" stroke-width="1.5" fill="none"/><path d="M8 22c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><div><h1 class="title">DNA Talent</h1><p class="subtitle">Leadgen Dashboard — Dany</p></div></div><div style="display:flex;align-items:center;gap:12px"><button class="refresh-btn" onclick="loadData()">↻ Ververs</button><div class="live-indicator"><span class="live-dot"></span><span class="live-text">'+allData.length+' leads</span></div></div></div>'
+  var syncHtml = '';
+  if (SYNC_URL) {
+    var scls = syncState==='ok'?'sync-ok':(syncState==='err'?'sync-err':'sync-off');
+    var sico = syncState==='ok'?'●':(syncState==='err'?'!':'…');
+    var slbl = syncState==='ok'?'Sync':(syncState==='err'?'Sync fout':'Syncen…');
+    syncHtml = '<span class="sync-badge '+scls+'">'+sico+' '+slbl+'</span>';
+  }
+  app.innerHTML = '<div class="header"><div class="header-left"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#215362"/><circle cx="14" cy="10" r="4" stroke="white" stroke-width="1.5" fill="none"/><path d="M8 22c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><div><h1 class="title">DNA Talent</h1><p class="subtitle">Leadgen Dashboard — Dany</p></div></div><div style="display:flex;align-items:center;gap:12px">'+syncHtml+'<button class="refresh-btn" onclick="loadData();syncDown()">↻ Ververs</button><div class="live-indicator"><span class="live-dot"></span><span class="live-text">'+allData.length+' leads</span></div></div></div>'
     + '<div class="funnel">'+funnelHtml+'</div>'
-    + '<div class="filter-bar"><div class="filter-group">'+statusBtnsHtml+'</div><div class="filter-divider"></div><div class="filter-group">'+actionBtnsHtml+'</div><div class="search-wrap"><svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" placeholder="Zoek op naam, bedrijf of sector..." value="'+esc(searchQuery)+'" oninput="setSearch(this.value)" /></div></div>'
+    + '<div class="filter-bar"><div class="filter-group">'+actionBtnsHtml+'</div><div class="status-select-wrap"><label>Status</label><select class="status-select" onchange="setStatus(this.value)">'+statusSelectHtml+'</select></div><div class="search-wrap"><svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" placeholder="Zoek op naam, bedrijf of sector..." value="'+esc(searchQuery)+'" oninput="setSearch(this.value)" /></div></div>'
     + '<div class="table-wrap"><table><thead><tr>'+thHtml+'</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>'
     + '<div class="table-footer">'+filtered.length+' van '+allData.length+' leads</div>'
     + '<div class="overlay '+(selectedLead?'open':'')+'" onclick="closeLead()">'+panelHtml+'</div>';
@@ -324,8 +371,10 @@ function toggleSort(field) {
 function openLead(index) { selectedLead=getFiltered()[index]; render(); }
 function closeLead() { selectedLead=null; render(); }
 
+syncDown();
 loadData();
 setInterval(loadData, 5*60*1000);
+setInterval(syncDown, 2*60*1000);
 </script>
 </body>
 </html>
