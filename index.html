@@ -77,7 +77,15 @@ td{padding:10px 14px;vertical-align:middle}
 .message-box{padding:14px;background:#f8fafc;border-radius:8px;font-size:13px;line-height:1.6;color:#334155;border:1px solid #e2e8f0;white-space:pre-wrap}
 .linkedin-link{font-size:13px;color:#215362;word-break:break-all;text-decoration:none}
 .linkedin-link:hover{text-decoration:underline}
-@media(max-width:768px){.funnel{flex-wrap:wrap}.funnel-step{min-width:calc(50% - 6px)}.filter-bar{flex-direction:column;align-items:stretch}.search-wrap{margin-left:0}.search-input{width:100%}.table-wrap{margin:16px 12px 0}.header,.funnel,.filter-bar{padding-left:12px;padding-right:12px}.table-footer{padding:10px 12px}}
+.filter-label{font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-right:4px;align-self:center;white-space:nowrap}
+.filter-divider{width:1px;height:20px;background:#e2e8f0;margin:0 4px;align-self:center}
+.action-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:5px;font-size:12px;font-weight:500;white-space:nowrap}
+.action-picker{display:flex;flex-wrap:wrap;gap:6px}
+.action-btn{padding:8px 12px;font-size:12px;font-weight:500;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#475569;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;transition:all .15s}
+.action-btn:hover{background:#f8fafc;border-color:#cbd5e1}
+.action-btn.active{background:#0f172a;color:white;border-color:#0f172a}
+.action-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+@media(max-width:768px){.funnel{flex-wrap:wrap}.funnel-step{min-width:calc(50% - 6px)}.filter-bar{flex-direction:column;align-items:stretch}.filter-divider{display:none}.search-wrap{margin-left:0}.search-input{width:100%}.table-wrap{margin:16px 12px 0;max-height:calc(100vh - 420px)}.header,.funnel,.filter-bar{padding-left:12px;padding-right:12px}.table-footer{padding:10px 12px}}
 </style>
 </head>
 <body>
@@ -86,10 +94,36 @@ td{padding:10px 14px;vertical-align:middle}
 var SHEET_ID = '1D2OOrxtTIt0tRAIJRR5Tkjh_FBnbSN8lu7BM-xyfz5U';
 var allData = [];
 var statusFilter = 'Alle';
+var actionFilter = 'Alle';
 var searchQuery = '';
 var sortField = 'Datum';
 var sortDir = 'desc';
 var selectedLead = null;
+
+var actionConfigs = {
+  '': {color:'#94a3b8',bg:'#f1f5f9',label:'Geen actie',icon:'–'},
+  'gesprek': {color:'#3b82f6',bg:'#eff6ff',label:'Gesprek gestart',icon:'◐'},
+  'gereageerd': {color:'#8b5cf6',bg:'#f5f3ff',label:'Heeft gereageerd',icon:'↩'},
+  'geinteresseerd': {color:'#10b981',bg:'#ecfdf5',label:'Geïnteresseerd',icon:'✓'},
+  'follow-up': {color:'#f59e0b',bg:'#fffbeb',label:'Follow-up nodig',icon:'↻'},
+  'geen-interesse': {color:'#ef4444',bg:'#fef2f2',label:'Geen interesse',icon:'✗'}
+};
+var actionOrder = ['gesprek','gereageerd','geinteresseerd','follow-up','geen-interesse'];
+
+var actionStore = {};
+try { actionStore = JSON.parse(localStorage.getItem('dna_actions') || '{}'); } catch(e) { actionStore = {}; }
+
+function leadKey(lead) { return lead['Linkedin URL'] || ((lead.Voornaam||'')+'|'+(lead.Achternaam||'')+'|'+(lead.Bedrijf||'')); }
+function getAction(lead) { return actionStore[leadKey(lead)] || ''; }
+function saveActions() { try { localStorage.setItem('dna_actions', JSON.stringify(actionStore)); } catch(e){} }
+function setLeadAction(key, val) {
+  if (val) actionStore[key] = val; else delete actionStore[key];
+  saveActions();
+  if (selectedLead && leadKey(selectedLead) === key) {
+    // keep panel open
+  }
+  render();
+}
 
 var statusConfigs = {
   'Nieuw': {color:'#64748b',bg:'#f1f5f9',label:'Nieuw',icon:'○'},
@@ -137,6 +171,13 @@ function loadData() {
 function getFiltered() {
   var items = allData.slice();
   if (statusFilter !== 'Alle') items = items.filter(function(l) { return getStatus(l).label === statusFilter; });
+  if (actionFilter !== 'Alle') {
+    items = items.filter(function(l) {
+      var a = getAction(l);
+      if (actionFilter === 'Geen actie') return !a;
+      return actionConfigs[a] && actionConfigs[a].label === actionFilter;
+    });
+  }
   if (searchQuery) {
     var q = searchQuery.toLowerCase();
     items = items.filter(function(l) {
@@ -179,16 +220,24 @@ function render() {
   }
 
   var statusBtns = ['Alle','Nieuw','Verzenden','Verzonden','Geaccepteerd','Follow-up','Nudge','Gereageerd','Afgewezen'];
-  var statusBtnsHtml = '';
+  var statusBtnsHtml = '<span class="filter-label">Status</span>';
   for (var si=0; si<statusBtns.length; si++) {
     var sv = statusBtns[si];
     statusBtnsHtml += '<button class="filter-btn '+(statusFilter===sv?'active':'')+'" onclick="setStatus(\''+sv+'\')">'+sv+'</button>';
   }
 
+  var actionBtns = ['Alle','Geen actie'];
+  for (var ai=0; ai<actionOrder.length; ai++) actionBtns.push(actionConfigs[actionOrder[ai]].label);
+  var actionBtnsHtml = '<span class="filter-label">Opvolging</span>';
+  for (var aj=0; aj<actionBtns.length; aj++) {
+    var av = actionBtns[aj];
+    actionBtnsHtml += '<button class="filter-btn '+(actionFilter===av?'active':'')+'" onclick="setActionFilter(\''+av+'\')">'+esc(av)+'</button>';
+  }
+
   var cols = [
     {key:'Datum',label:'Datum'},{key:'Voornaam',label:'Naam'},{key:'Bedrijf',label:'Bedrijf'},
     {key:'Functie',label:'Functie'},{key:'Sector',label:'Sector'},{key:'AI Score',label:'Score'},
-    {key:'Gekozen Haak',label:'Haak'},{key:'Status',label:'Status'}
+    {key:'Gekozen Haak',label:'Haak'},{key:'Status',label:'Status'},{key:'_action',label:'Opvolging'}
   ];
   var thHtml = '';
   for (var ci=0; ci<cols.length; ci++) {
@@ -199,13 +248,15 @@ function render() {
 
   var rowsHtml = '';
   if (filtered.length === 0) {
-    rowsHtml = '<tr><td colspan="8" class="empty-state">Geen leads gevonden.</td></tr>';
+    rowsHtml = '<tr><td colspan="9" class="empty-state">Geen leads gevonden.</td></tr>';
   } else {
     for (var ri=0; ri<filtered.length; ri++) {
       var lead = filtered[ri];
       var st = getStatus(lead);
       var score = Number(lead['AI Score'])||0;
       var scoreClass = score>=8?'score-high':score>=5?'score-mid':'score-low';
+      var act = getAction(lead);
+      var actCfg = actionConfigs[act] || actionConfigs[''];
       rowsHtml += '<tr class="lead-row" style="animation-delay:'+ri*20+'ms" onclick="openLead('+ri+')">';
       rowsHtml += '<td><span class="date-mono">'+esc(lead.Datum)+'</span></td>';
       rowsHtml += '<td><span class="name-text">'+esc(lead.Voornaam)+' '+esc(lead.Achternaam)+'</span></td>';
@@ -215,6 +266,7 @@ function render() {
       rowsHtml += '<td><span class="score-badge '+scoreClass+'">'+esc(lead['AI Score'])+'</span></td>';
       rowsHtml += '<td><span class="dim-text">'+esc(lead['Gekozen Haak'])+'</span></td>';
       rowsHtml += '<td><span class="status-badge" style="background:'+st.bg+';color:'+st.color+'">'+st.icon+' '+st.label+'</span></td>';
+      rowsHtml += '<td><span class="action-badge" style="background:'+actCfg.bg+';color:'+actCfg.color+'">'+actCfg.icon+' '+actCfg.label+'</span></td>';
       rowsHtml += '</tr>';
     }
   }
@@ -222,8 +274,20 @@ function render() {
   var panelHtml = '';
   if (selectedLead) {
     var ps = getStatus(selectedLead);
+    var curAction = getAction(selectedLead);
+    var leadK = leadKey(selectedLead).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     panelHtml = '<div class="panel" onclick="event.stopPropagation()">';
     panelHtml += '<div class="panel-header"><div><h2 class="panel-name">'+esc(selectedLead.Voornaam)+' '+esc(selectedLead.Achternaam)+'</h2><p class="panel-company">'+esc(selectedLead.Functie)+' bij '+esc(selectedLead.Bedrijf)+'</p></div><button class="close-btn" onclick="closeLead()">&#10005;</button></div>';
+    var pickerHtml = '';
+    var noneActive = curAction === '' ? 'active' : '';
+    pickerHtml += '<button class="action-btn '+noneActive+'" onclick="setLeadAction(\''+leadK+'\',\'\')"><span class="action-dot" style="background:#94a3b8"></span>Geen actie</button>';
+    for (var pk=0; pk<actionOrder.length; pk++) {
+      var ak = actionOrder[pk];
+      var ac = actionConfigs[ak];
+      var activeCls = curAction === ak ? 'active' : '';
+      pickerHtml += '<button class="action-btn '+activeCls+'" onclick="setLeadAction(\''+leadK+'\',\''+ak+'\')"><span class="action-dot" style="background:'+ac.color+'"></span>'+ac.icon+' '+ac.label+'</button>';
+    }
+    panelHtml += '<div class="panel-section"><h3 class="panel-section-title">Opvolging</h3><div class="action-picker">'+pickerHtml+'</div></div>';
     panelHtml += '<div class="panel-meta">';
     panelHtml += '<div class="meta-item"><span class="meta-label">Status</span><span class="status-badge" style="background:'+ps.bg+';color:'+ps.color+'">'+ps.icon+' '+ps.label+'</span></div>';
     panelHtml += '<div class="meta-item"><span class="meta-label">AI Score</span><span class="panel-score">'+esc(selectedLead['AI Score'])+'/10</span></div>';
@@ -243,13 +307,14 @@ function render() {
 
   app.innerHTML = '<div class="header"><div class="header-left"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#215362"/><circle cx="14" cy="10" r="4" stroke="white" stroke-width="1.5" fill="none"/><path d="M8 22c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><div><h1 class="title">DNA Talent</h1><p class="subtitle">Leadgen Dashboard — Dany</p></div></div><div style="display:flex;align-items:center;gap:12px"><button class="refresh-btn" onclick="loadData()">↻ Ververs</button><div class="live-indicator"><span class="live-dot"></span><span class="live-text">'+allData.length+' leads</span></div></div></div>'
     + '<div class="funnel">'+funnelHtml+'</div>'
-    + '<div class="filter-bar"><div class="filter-group">'+statusBtnsHtml+'</div><div class="search-wrap"><svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" placeholder="Zoek op naam, bedrijf of sector..." value="'+esc(searchQuery)+'" oninput="setSearch(this.value)" /></div></div>'
+    + '<div class="filter-bar"><div class="filter-group">'+statusBtnsHtml+'</div><div class="filter-divider"></div><div class="filter-group">'+actionBtnsHtml+'</div><div class="search-wrap"><svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" placeholder="Zoek op naam, bedrijf of sector..." value="'+esc(searchQuery)+'" oninput="setSearch(this.value)" /></div></div>'
     + '<div class="table-wrap"><table><thead><tr>'+thHtml+'</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>'
     + '<div class="table-footer">'+filtered.length+' van '+allData.length+' leads</div>'
     + '<div class="overlay '+(selectedLead?'open':'')+'" onclick="closeLead()">'+panelHtml+'</div>';
 }
 
 function setStatus(v) { statusFilter=v; render(); }
+function setActionFilter(v) { actionFilter=v; render(); }
 function setSearch(v) { searchQuery=v; render(); }
 function toggleSort(field) {
   if (sortField===field) sortDir=sortDir==='asc'?'desc':'asc';
